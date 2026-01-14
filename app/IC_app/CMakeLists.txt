@@ -32,14 +32,14 @@ find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS Core Widgets Quick Network)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Widgets Quick Network)
 
 # CommonAPI (vsomeip)
-find_package(CommonAPI 3.2.0 REQUIRED)
-find_package(CommonAPI-SomeIP 3.2.0 REQUIRED)
-find_package(vsomeip3 REQUIRED)
+#find_package(CommonAPI 3.2.0 REQUIRED)
+#find_package(CommonAPI-SomeIP 3.2.0 REQUIRED)
+#find_package(vsomeip3 REQUIRED)
 
 # Generated CommonAPI code paths
-set(COMMONAPI_GEN_DIR ${CMAKE_SOURCE_DIR}/../../commonapi/generated)
-set(COMMONAPI_CORE_DIR ${COMMONAPI_GEN_DIR}/core)
-set(COMMONAPI_SOMEIP_DIR ${COMMONAPI_GEN_DIR}/someip)
+#set(COMMONAPI_GEN_DIR ${CMAKE_SOURCE_DIR}/../../commonapi/generated)
+#set(COMMONAPI_CORE_DIR ${COMMONAPI_GEN_DIR}/core)
+#set(COMMONAPI_SOMEIP_DIR ${COMMONAPI_GEN_DIR}/someip)
 
 include_directories(
     ${COMMONAPI_CORE_DIR}
@@ -82,10 +82,9 @@ target_link_libraries(IC_app
             Qt${QT_VERSION_MAJOR}::Widgets 
             Qt${QT_VERSION_MAJOR}::Quick 
             Qt${QT_VERSION_MAJOR}::Network
-            CommonAPI
-            CommonAPI-SomeIP
+            #CommonAPI
+            #CommonAPI-SomeIP
             vsomeip3)
-
 if(${QT_VERSION} VERSION_LESS 6.1.0)
   set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.IC_app)
 endif()

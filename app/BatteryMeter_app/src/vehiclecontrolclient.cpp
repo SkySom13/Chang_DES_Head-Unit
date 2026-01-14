@@ -1,57 +1,47 @@
 #include "vehiclecontrolclient.h"
 #include <QDebug>
-#include <QRandomGenerator>
 
 VehicleControlClient::VehicleControlClient(QObject *parent)
-    : QObject(parent), 
-      gearState_(0), 
-      speed_(0), 
-      batteryLevel_(100),
-      isConnected_(true)
+    : QObject(parent)
+    , m_batteryLevel(75)
+    , m_serviceAvailable(false)
 {
-    qDebug() << "VehicleControlClient initialized (MOCK MODE)";
+    qDebug() << "═══════════════════════════════════════════════════════";
+    qDebug() << "VehicleControlClient (BatteryMeter) - TEMPORARY MOCK MODE";
+    qDebug() << "TODO: Replace with vsomeip when VehicleControlECU is ready";
+    qDebug() << "═══════════════════════════════════════════════════════";
     
-    // Setup update timer (simulate values every 500ms)
-    connect(&updateTimer_, &QTimer::timeout, this, &VehicleControlClient::updateValues);
-    updateTimer_.start(500);
+    // Temporary mock timer - simulates battery updates
+    connect(&m_mockTimer, &QTimer::timeout, this, &VehicleControlClient::simulateBatteryUpdate);
+    m_mockTimer.start(2000);  // Update every 2 seconds
     
-    emit connectionStatusChanged(true);
+    // Simulate service available after 1 second
+    QTimer::singleShot(1000, this, [this]() {
+        m_serviceAvailable = true;
+        emit serviceAvailableChanged(true);
+        qDebug() << "✅ Mock service now 'available'";
+    });
 }
 
 VehicleControlClient::~VehicleControlClient()
 {
-    updateTimer_.stop();
+    m_mockTimer.stop();
+    qDebug() << "VehicleControlClient destroyed";
 }
 
-void VehicleControlClient::updateValues()
+void VehicleControlClient::simulateBatteryUpdate()
 {
-    // Simulate battery level (slowly draining)
-    if (batteryLevel_ > 0) {
-        batteryLevel_ -= 1;
+    // Simulate battery drain
+    m_batteryLevel--;
+    if (m_batteryLevel < 0) {
+        m_batteryLevel = 100;  // Reset
     }
     
-    // Simulate speed (random between 0-100)
-    speed_ = QRandomGenerator::global()->bounded(0, 101);
+    emit batteryLevelChanged(m_batteryLevel);
     
-    // Simulate gear state (random between 0-4: P,R,N,D,S)
-    gearState_ = QRandomGenerator::global()->bounded(0, 5);
-    
-    emit batteryLevelChanged();
-    emit speedChanged();
-    emit gearStateChanged();
-}
-
-int VehicleControlClient::gearState() const
-{
-    return gearState_;
-}
-
-int VehicleControlClient::speed() const
-{
-    return speed_;
-}
-
-int VehicleControlClient::batteryLevel() const
-{
-    return batteryLevel_;
+    // Log every 5 updates
+    static int count = 0;
+    if (++count % 5 == 0) {
+        qDebug() << "📡 [MOCK Battery] Level:" << m_batteryLevel << "%";
+    }
 }

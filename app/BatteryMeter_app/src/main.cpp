@@ -1,68 +1,72 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QtQml>
-#include <QTimer>
-#include <QWindow>
-#include <QCoreApplication>
-#include <QUrl>
+#include <QQuickWindow>
 #include <QDebug>
+#include <QQmlError>
+
 #include "vehiclecontrolclient.h"
 
 int main(int argc, char *argv[])
 {
-    qDebug() << "BatteryMeter_app Starting...";
     QGuiApplication app(argc, argv);
-
-    // ═══════════════════════════════════════════════════════
-    // IVI SHELL: Set application name for display routing
-    // ═══════════════════════════════════════════════════════
-    // This name will be routed by ivi-shell
-    app.setApplicationName("appBatteryMeter");  // ← IVI Shell routing
+    
+    // Set application name for Wayland IVI-Shell routing
+    app.setApplicationName("appBatteryMeter");
     app.setApplicationDisplayName("Battery Meter");
     app.setDesktopFileName("appBatteryMeter");
-
+    
     qDebug() << "═══════════════════════════════════════════════════════";
-    qDebug() << "BatteryMeter_app Starting (IVI Shell - Weston)";
+    qDebug() << "BatteryMeter_app Starting";
     qDebug() << "App ID: appBatteryMeter";
-    qDebug() << "Mock Mode: Using simulated vehicle data";
+    qDebug() << "Window Size: 280x400 (Battery Section)";
+    qDebug() << "Mode: Mock (Temporary until VehicleControlECU ready)";
     qDebug() << "═══════════════════════════════════════════════════════";
     
     QQmlApplicationEngine engine;
-
-    // Connect to QML engine warnings/errors
-    QObject::connect(&engine, &QQmlApplicationEngine::warnings, [](const QList<QQmlError> &warnings) {
+    
+    // Connect to QML engine warnings/errors for debugging
+    QObject::connect(&engine, &QQmlApplicationEngine::warnings, 
+                     [](const QList<QQmlError> &warnings) {
         for (const QQmlError &warning : warnings) {
-            Q_UNUSED(warning);
+            qWarning() << "QML Warning:" << warning.toString();
         }
     });
-
+    
+    // Add import paths
     engine.addImportPath("qrc:/");
-    engine.addImportPath(QCoreApplication::applicationDirPath() + "/../qml");
-
-    // ═══════════════════════════════════════════════════════
-    // Register C++ objects to QML context
-    // ═══════════════════════════════════════════════════════
-    // VehicleControlClient (vsomeip - Battery Level)
+    
+    qDebug() << "QML Import paths:" << engine.importPathList();
+    
+    // Register VehicleControlClient (mock mode)
     VehicleControlClient vehicleClient;
     engine.rootContext()->setContextProperty("vehicleClient", &vehicleClient);
-
+    
+    qDebug() << "✅ VehicleControlClient registered (mock mode)";
+    
+    // Load QML from resources
     const QUrl url(QStringLiteral("qrc:/DesignContent/App.qml"));
-    engine.load(url);
-
-    if (engine.rootObjects().isEmpty()) {
-        qWarning() << "Failed to load QML from resources, trying file system...";
-        // Fallback to file system
-        QString qmlPath = QCoreApplication::applicationDirPath() + "/../qml/DesignContent/App.qml";
-        QUrl fileUrl = QUrl::fromLocalFile(qmlPath);
-        qDebug() << "Attempting to load from:" << fileUrl;
-        engine.load(fileUrl);
-        
-        if (engine.rootObjects().isEmpty()) {
-            qCritical() << "Failed to load QML from both resources and file system!";
-            return -1;
+    qDebug() << "Loading QML from:" << url.toString();
+    
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
+                     &app, [url](QObject *obj, const QUrl &objUrl) {
+        if (!obj && url == objUrl) {
+            qCritical() << "❌ Failed to create QML object!";
+            QCoreApplication::exit(-1);
         }
+    }, Qt::QueuedConnection);
+    
+    engine.load(url);
+    
+    if (engine.rootObjects().isEmpty()) {
+        qCritical() << "❌ Failed to load QML!";
+        qCritical() << "   Check that App.qml exists in resources";
+        return -1;
     }
-
+    
+    qDebug() << "✅ QML UI loaded";
+    qDebug() << "🚀 BatteryMeter_app is now running!";
+    qDebug() << "";
+    
     return app.exec();
 }
