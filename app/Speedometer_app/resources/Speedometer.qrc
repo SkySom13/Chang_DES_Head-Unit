@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="Design/Constants.qml">../qml/Design/Constants.qml</file>
+        <file alias="DesignContent/App.qml">../qml/DesignContent/App.qml</file>
+    </qresource>
+</RCC>

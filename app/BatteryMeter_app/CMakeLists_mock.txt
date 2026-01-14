@@ -1,0 +1,53 @@
+cmake_minimum_required(VERSION 3.16)
+
+project(BatteryMeter_app VERSION 1.0 LANGUAGES CXX)
+
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ════════════════════════════════════════════════════════════
+# TEST BUILD: Mock mode (CommonAPI dependencies disabled)
+# ════════════════════════════════════════════════════════════
+message(STATUS "Building BatteryMeter_app in MOCK MODE (no CommonAPI/vsomeip)")
+
+find_package(QT NAMES Qt5 Qt6 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Widgets Network)
+
+set(PROJECT_SOURCES
+        src/main_widgets.cpp
+        src/vehiclecontrolclient.cpp
+        src/vehiclecontrolclient.h
+)
+
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_add_executable(BatteryMeter_app
+        MANUAL_FINALIZATION
+        ${PROJECT_SOURCES}
+    )
+else()
+    add_executable(BatteryMeter_app
+        ${PROJECT_SOURCES}
+    )
+endif()
+
+target_link_libraries(BatteryMeter_app
+    PRIVATE Qt${QT_VERSION_MAJOR}::Core 
+            Qt${QT_VERSION_MAJOR}::Widgets 
+            Qt${QT_VERSION_MAJOR}::Quick 
+            Qt${QT_VERSION_MAJOR}::
+if(${QT_VERSION} VERSION_LESS 6.1.0)
+  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.BatteryMeter_app)
+endif()
+set_target_properties(BatteryMeter_app PROPERTIES
+    ${BUNDLE_ID_OPTION}
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    MACOSX_BUNDLE TRUE
+    WIN32_EXECUTABLE TRUE
+)
+
+message(STATUS "✓ BatteryMeter_app configured successfully (Mock Mode)")
