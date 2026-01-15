@@ -1,47 +1,122 @@
 #include "vehiclecontrolclient.h"
 #include <QDebug>
+#include <QDateTime>
+#include <functional>
 
 VehicleControlClient::VehicleControlClient(QObject *parent)
     : QObject(parent)
-    , m_batteryLevel(75)
+    , m_batteryLevel(0)
     , m_serviceAvailable(false)
 {
-    qDebug() << "═══════════════════════════════════════════════════════";
-    qDebug() << "VehicleControlClient (BatteryMeter) - TEMPORARY MOCK MODE";
-    qDebug() << "TODO: Replace with vsomeip when VehicleControlECU is ready";
-    qDebug() << "═══════════════════════════════════════════════════════";
+    qDebug() << "VehicleControlClient (BatteryMeter) created";
     
-    // Temporary mock timer - simulates battery updates
-    connect(&m_mockTimer, &QTimer::timeout, this, &VehicleControlClient::simulateBatteryUpdate);
-    m_mockTimer.start(2000);  // Update every 2 seconds
-    
-    // Simulate service available after 1 second
-    QTimer::singleShot(1000, this, [this]() {
-        m_serviceAvailable = true;
-        emit serviceAvailableChanged(true);
-        qDebug() << "✅ Mock service now 'available'";
-    });
+    // Auto-connect to service
+    connectToService();
 }
 
 VehicleControlClient::~VehicleControlClient()
 {
-    m_mockTimer.stop();
+    disconnectFromService();
     qDebug() << "VehicleControlClient destroyed";
 }
 
-void VehicleControlClient::simulateBatteryUpdate()
+void VehicleControlClient::connectToService()
 {
-    // Simulate battery drain
-    m_batteryLevel--;
-    if (m_batteryLevel < 0) {
-        m_batteryLevel = 100;  // Reset
+    qDebug() << "🔌 Connecting to VehicleControl service...";
+    
+    // Get CommonAPI runtime
+    m_runtime = CommonAPI::Runtime::get();
+    if (!m_runtime) {
+        qCritical() << "❌ Failed to get CommonAPI runtime!";
+        emit serviceAvailableChanged(false);
+        return;
     }
     
-    emit batteryLevelChanged(m_batteryLevel);
+    // Build proxy
+    const std::string domain = "local";
+    const std::string instance = "vehiclecontrol.VehicleControl";
+    const std::string connection = "BatteryMeter_client";
     
-    // Log every 5 updates
-    static int count = 0;
-    if (++count % 5 == 0) {
-        qDebug() << "📡 [MOCK Battery] Level:" << m_batteryLevel << "%";
+    m_proxy = m_runtime->buildProxy<VehicleControlProxy>(domain, instance, connection);
+    
+    if (!m_proxy) {
+        qCritical() << "❌ Failed to build VehicleControl proxy!";
+        emit serviceAvailableChanged(false);
+        return;
+    }
+    
+    qDebug() << "✅ Proxy created successfully";
+    
+    // Subscribe to availability status
+    m_proxy->getProxyStatusEvent().subscribe(
+        std::bind(&VehicleControlClient::onAvailabilityChanged, this, std::placeholders::_1)
+    );
+    
+    // Setup event subscriptions
+    setupEventSubscriptions();
+    
+    qDebug() << "✅ Connected to VehicleControl service";
+    qDebug() << "   Domain:" << QString::fromStdString(domain);
+    qDebug() << "   Instance:" << QString::fromStdString(instance);
+}
+
+void VehicleControlClient::disconnectFromService()
+{
+    if (m_proxy) {
+        qDebug() << "🔌 Disconnecting from VehicleControl service...";
+        m_proxy.reset();
+        m_serviceAvailable = false;
+        emit serviceAvailableChanged(false);
+    }
+}
+
+void VehicleControlClient::setupEventSubscriptions()
+{
+    if (!m_proxy) {
+        qWarning() << "Cannot setup subscriptions: proxy is null";
+        return;
+    }
+    
+    qDebug() << "📡 Subscribing to VehicleControl events...";
+    
+    // Subscribe to vehicleStateChanged event
+    m_proxy->getVehicleStateChangedEvent().subscribe(
+        [this](std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp) {
+            this->onVehicleStateChanged(gear, speed, battery, timestamp);
+        }
+    );
+    
+    qDebug() << "✅ Event subscriptions setup complete";
+}
+
+void VehicleControlClient::onVehicleStateChanged(std::string gear, uint16_t speed, uint8_t battery, uint64_t timestamp)
+{
+    // Update battery level
+    if (m_batteryLevel != battery) {
+        m_batteryLevel = battery;
+        emit batteryLevelChanged(m_batteryLevel);
+        
+        qDebug() << "📡 [Event] vehicleStateChanged:"
+                 << "Gear:" << QString::fromStdString(gear)
+                 << "Speed:" << speed << "km/h"
+                 << "Battery:" << m_batteryLevel << "%";
+    }
+}
+
+void VehicleControlClient::onAvailabilityChanged(CommonAPI::AvailabilityStatus status)
+{
+    bool wasAvailable = m_serviceAvailable;
+    m_serviceAvailable = (status == CommonAPI::AvailabilityStatus::AVAILABLE);
+    
+    if (m_serviceAvailable != wasAvailable) {
+        qDebug() << "🔗 Service availability changed:"
+                 << (m_serviceAvailable ? "AVAILABLE" : "NOT AVAILABLE");
+        emit serviceAvailableChanged(m_serviceAvailable);
+    }
+    
+    if (m_serviceAvailable) {
+        qDebug() << "✅ VehicleControl service is now available!";
+    } else {
+        qWarning() << "⚠️  VehicleControl service is not available";
     }
 }

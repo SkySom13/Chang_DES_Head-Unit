@@ -2,62 +2,100 @@ cmake_minimum_required(VERSION 3.16)
 
 project(BatteryMeter_app VERSION 1.0 LANGUAGES CXX)
 
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+
 # ════════════════════════════════════════════════════════════
-# Qt Quick QML Build with MOCK VehicleControl (No vsomeip)
-# Using Qt 5.15.2 from /home/seame/Qt/5.15.2
+# 배포 환경별 경로 설정 (환경변수 우선)
 # ════════════════════════════════════════════════════════════
-message(STATUS "══════════════════════════════════════════════════════")
-message(STATUS "Building BatteryMeter_app - MOCK MODE")
-message(STATUS "Qt from: /home/seame/Qt/5.15.2/gcc_64")
-message(STATUS "No vsomeip dependencies (using mock data)")
-message(STATUS "══════════════════════════════════════════════════════")
+if(DEFINED ENV{DEPLOY_PREFIX})
+    set(INSTALL_PREFIX $ENV{DEPLOY_PREFIX})
+    message(STATUS "Using DEPLOY_PREFIX from environment: ${INSTALL_PREFIX}")
+else()
+    set(INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/../../install_folder")
+    message(STATUS "Using default DEPLOY_PREFIX: ${INSTALL_PREFIX}")
+endif()
 
-# Set Qt5 paths
-set(Qt5_DIR "/home/seame/Qt/5.15.2/gcc_64/lib/cmake/Qt5")
-set(CMAKE_PREFIX_PATH "/home/seame/Qt/5.15.2/gcc_64;${CMAKE_PREFIX_PATH}")
+# RPATH 설정 (vsomeip, CommonAPI 라이브러리 경로)
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${INSTALL_PREFIX}")
+set(CMAKE_INSTALL_RPATH "${INSTALL_PREFIX}/lib")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
 
-# Find Qt5 packages (NO CommonAPI or vsomeip)
-find_package(Qt5 REQUIRED COMPONENTS Core Gui Qml Quick Network)
-set(QT_VERSION_MAJOR 5)
+# Qt packages
+find_package(Qt5 REQUIRED COMPONENTS Core Network Quick Qml)
 
-# Project sources (mock version only)
-set(PROJECT_SOURCES
+# CommonAPI & vsomeip
+find_package(CommonAPI 3.2 REQUIRED)
+find_package(CommonAPI-SomeIP 3.2 REQUIRED)
+find_package(vsomeip3 3.5 REQUIRED)
+
+message(STATUS "Starting BatteryMeter_app with vSomeIP/CommonAPI integration")
+# CommonAPI generated code path
+if(NOT COMMONAPI_GEN_DIR)
+    if(DEFINED ENV{COMMONAPI_GEN_DIR})
+        set(COMMONAPI_GEN_DIR $ENV{COMMONAPI_GEN_DIR})
+    else()
+        set(COMMONAPI_GEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../commonapi/generated")
+    endif()
+endif()
+
+message(STATUS "CommonAPI generated code directory: ${COMMONAPI_GEN_DIR}")
+
+# Include directories
+include_directories(
+    ${COMMONAPI_GEN_DIR}/core
+    ${COMMONAPI_GEN_DIR}/someip
+)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+# Source files
+set(SOURCES
     src/main.cpp
     src/vehiclecontrolclient.cpp
+)
+
+set(HEADERS
     src/vehiclecontrolclient.h
+)
+
+# CommonAPI generated sources (SomeIP binding만 .cpp 파일 존재)
+set(COMMONAPI_SOURCES
+    ${COMMONAPI_GEN_DIR}/someip/v1/vehiclecontrol/VehicleControlSomeIPProxy.cpp
+    ${COMMONAPI_GEN_DIR}/someip/v1/vehiclecontrol/VehicleControlSomeIPDeployment.cpp
+)
+
+# QML resources
+set(QML_RESOURCES
     resources/BatteryMeter.qrc
 )
 
-# Create executable
+# Executable
 add_executable(BatteryMeter_app
-    ${PROJECT_SOURCES}
+    ${SOURCES}
+    ${HEADERS}
+    ${COMMONAPI_SOURCES}
+    ${QML_RESOURCES}
 )
 
-# Link only Qt libraries (NO CommonAPI, NO vsomeip)
 target_link_libraries(BatteryMeter_app
-    PRIVATE 
-        Qt5::Core 
-        Qt5::Gui 
-        Qt5::Qml 
-        Qt5::Quick 
-        Qt5::Network
+    Qt5::Core
+    Qt5::Network
+    Qt5::Quick
+    Qt5::Qml
+    CommonAPI
+    CommonAPI-SomeIP
+    vsomeip3
 )
 
-# Set target properties
-set_target_properties(BatteryMeter_app PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER com.seame.BatteryMeter_app
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
+# Install
+install(TARGETS BatteryMeter_app
+    RUNTIME DESTINATION bin
 )
-
-message(STATUS "✓ BatteryMeter_app configured (MOCK mode - no vsomeip)")
-message(STATUS "══════════════════════════════════════════════════════")

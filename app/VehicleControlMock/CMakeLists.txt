@@ -6,11 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
 # ════════════════════════════════════════════════════════════
-# Deployment path settings (environment variable priority)
+# Deployment Environment
 # ════════════════════════════════════════════════════════════
 if(DEFINED ENV{DEPLOY_PREFIX})
     set(INSTALL_PREFIX $ENV{DEPLOY_PREFIX})
@@ -20,41 +20,49 @@ else()
     message(STATUS "Using default DEPLOY_PREFIX: ${INSTALL_PREFIX}")
 endif()
 
-# RPATH settings (vsomeip, CommonAPI library paths)
+# RPATH settings
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${INSTALL_PREFIX}")
 set(CMAKE_INSTALL_RPATH "${INSTALL_PREFIX}/lib")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
 
-# Qt packages (Core only - no GUI needed)
-find_package(Qt5 REQUIRED COMPONENTS Core)
+# ════════════════════════════════════════════════════════════
+# Qt5
+# ════════════════════════════════════════════════════════════
+set(Qt5_DIR "/home/seame/Qt/5.15.2/gcc_64/lib/cmake/Qt5")
+set(CMAKE_PREFIX_PATH "/home/seame/Qt/5.15.2/gcc_64;${CMAKE_PREFIX_PATH}")
 
+find_package(Qt5 REQUIRED COMPONENTS Core)
+set(CMAKE_AUTOMOC ON)
+
+# ════════════════════════════════════════════════════════════
 # CommonAPI & vsomeip
+# ════════════════════════════════════════════════════════════
 find_package(CommonAPI 3.2 REQUIRED)
 find_package(CommonAPI-SomeIP 3.2 REQUIRED)
-find_package(vsomeip3 3.5 REQUIRED)
+find_package(vsomeip3 REQUIRED)
 
-# CommonAPI generated code path
+# CommonAPI generated code
 if(NOT COMMONAPI_GEN_DIR)
-    if(DEFINED ENV{COMMONAPI_GEN_DIR})
-        set(COMMONAPI_GEN_DIR $ENV{COMMONAPI_GEN_DIR})
-    else()
-        set(COMMONAPI_GEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../commonapi/generated")
-    endif()
+    set(COMMONAPI_GEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../commonapi/generated")
 endif()
 
-message(STATUS "CommonAPI generated code directory: ${COMMONAPI_GEN_DIR}")
+message(STATUS "═══════════════════════════════════════════════════════")
+message(STATUS "VehicleControlMock Configuration")
+message(STATUS "  Qt5: /home/seame/Qt/5.15.2/gcc_64")
+message(STATUS "  vsomeip: ${INSTALL_PREFIX}")
+message(STATUS "  Generated code: ${COMMONAPI_GEN_DIR}")
+message(STATUS "═══════════════════════════════════════════════════════")
 
-# Include directories
 include_directories(
     ${COMMONAPI_GEN_DIR}/core
     ${COMMONAPI_GEN_DIR}/someip
 )
 
-set(CMAKE_AUTOMOC ON)
-
-# Source files
+# ════════════════════════════════════════════════════════════
+# Source Files
+# ════════════════════════════════════════════════════════════
 set(SOURCES
     src/main.cpp
     src/MockStubImpl.cpp
@@ -64,13 +72,15 @@ set(HEADERS
     src/MockStubImpl.h
 )
 
-# CommonAPI generated sources (SomeIP binding - Stub for service provider)
+# CommonAPI generated sources (Stub for service provider)
 set(COMMONAPI_SOURCES
     ${COMMONAPI_GEN_DIR}/someip/v1/vehiclecontrol/VehicleControlSomeIPStubAdapter.cpp
     ${COMMONAPI_GEN_DIR}/someip/v1/vehiclecontrol/VehicleControlSomeIPDeployment.cpp
 )
 
+# ════════════════════════════════════════════════════════════
 # Executable
+# ════════════════════════════════════════════════════════════
 add_executable(VehicleControlMock
     ${SOURCES}
     ${HEADERS}
@@ -84,7 +94,11 @@ target_link_libraries(VehicleControlMock
     vsomeip3
 )
 
+# ════════════════════════════════════════════════════════════
 # Install
+# ════════════════════════════════════════════════════════════
 install(TARGETS VehicleControlMock
     RUNTIME DESTINATION bin
 )
+
+message(STATUS "✓ VehicleControlMock configured successfully")

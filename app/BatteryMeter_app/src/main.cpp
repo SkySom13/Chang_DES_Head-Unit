@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     qDebug() << "BatteryMeter_app Starting";
     qDebug() << "App ID: appBatteryMeter";
     qDebug() << "Window Size: 280x400 (Battery Section)";
-    qDebug() << "Mode: Mock (Temporary until VehicleControlECU ready)";
+    qDebug() << "Mode: vSomeIP/CommonAPI (Real VehicleControl service)";
     qDebug() << "═══════════════════════════════════════════════════════";
     
     QQmlApplicationEngine engine;
@@ -38,11 +38,11 @@ int main(int argc, char *argv[])
     
     qDebug() << "QML Import paths:" << engine.importPathList();
     
-    // Register VehicleControlClient (mock mode)
+    // Register VehicleControlClient (vSomeIP/CommonAPI mode)
     VehicleControlClient vehicleClient;
     engine.rootContext()->setContextProperty("vehicleClient", &vehicleClient);
     
-    qDebug() << "✅ VehicleControlClient registered (mock mode)";
+    qDebug() << "✅ VehicleControlClient registered (vSomeIP/CommonAPI mode)";
     
     // Load QML from resources
     const QUrl url(QStringLiteral("qrc:/DesignContent/App.qml"));

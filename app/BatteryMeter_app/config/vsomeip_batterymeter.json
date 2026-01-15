@@ -1,21 +1,19 @@
 {
-    "unicast": "127.0.0.1",
+    "unicast": "192.168.1.101",
     "netmask": "255.255.255.0",
     "logging": {
         "level": "info",
         "console": "true",
-        "file": {
-            "enable": "false"
-        },
+        "file": { "enable": "false" },
         "dlt": "false"
     },
     "applications": [
         {
-            "name": "VehicleControlMock",
-            "id": "0x1001"
+            "name": "BatteryMeter",
+            "id": "0x1002"
         }
     ],
-    "routing": "VehicleControlMock",
+    "routing": "VehicleControlECU",
     "service-discovery": {
         "enable": "true",
         "multicast": "224.244.224.245",
@@ -34,10 +32,7 @@
             "service": "0x1234",
             "instance": "0x5678",
             "unreliable": "30501",
-            "reliable": {
-                "port": "30502",
-                "enable-magic-cookies": "false"
-            }
+            "reliable": { "port": "30502" }
         }
     ]
 }

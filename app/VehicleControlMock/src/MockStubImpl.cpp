@@ -6,12 +6,12 @@ MockStubImpl::MockStubImpl(QObject *parent)
     : QObject(parent)
     , m_updateTimer(new QTimer(this))
     , m_currentGear("P")
+    , m_currentSpeed(0)
+    , m_currentBattery(100)
     , m_currentDistance(START_DISTANCE)
-    , m_targetDistance(END_DISTANCE)
-    , m_distanceStep(DISTANCE_STEP)
 {
-    connect(m_updateTimer, &QTimer::timeout, this, &MockStubImpl::updateDistance);
-    qDebug() << "[Mock] MockStubImpl created";
+    connect(m_updateTimer, &QTimer::timeout, this, &MockStubImpl::updateSimulation);
+    qDebug() << "[Mock] ✓ MockStubImpl created";
 }
 
 MockStubImpl::~MockStubImpl()
@@ -25,13 +25,14 @@ void MockStubImpl::setGearPosition(const std::shared_ptr<CommonAPI::ClientId> _c
                                    setGearPositionReply_t _reply)
 {
     Q_UNUSED(_client);
-
     QString gear = QString::fromStdString(_gear);
-    qDebug() << "[Mock] setGearPosition RPC called:" << gear;
+    
+    qDebug() << "";
+    qDebug() << "[Mock] 📞 RPC Call: setGearPosition(" << gear << ")";
 
     // Validate gear
     if (gear != "P" && gear != "R" && gear != "N" && gear != "D") {
-        qWarning() << "[Mock] Invalid gear:" << gear;
+        qWarning() << "[Mock] ❌ Invalid gear:" << gear;
         _reply(false);
         return;
     }
@@ -39,34 +40,25 @@ void MockStubImpl::setGearPosition(const std::shared_ptr<CommonAPI::ClientId> _c
     QString oldGear = m_currentGear;
     m_currentGear = gear;
 
-    // Broadcast gear change
+    // Broadcast gear change event
     uint64_t timestamp = QDateTime::currentMSecsSinceEpoch();
     fireGearDistanceChangedEvent(m_currentGear.toStdString(),
                                   oldGear.toStdString(),
-                                  static_cast<uint16_t>(m_currentDistance),
+                                  m_currentDistance,
                                   timestamp);
 
-    qDebug() << "[Mock] Gear changed:" << oldGear << "->" << m_currentGear;
-    qDebug() << "[Mock] Timer active:" << m_updateTimer->isActive() << "Current distance:" << m_currentDistance;
+    qDebug() << "[Mock] ✓ Gear changed:" << oldGear << "→" << m_currentGear;
+    qDebug() << "[Mock] 📡 Broadcast: gearDistanceChanged";
 
-    // Start/stop PDC simulation based on gear
-    // Use QMetaObject::invokeMethod to ensure timer operations happen in the correct thread
-    if (gear == "R") {
-        if (!m_updateTimer->isActive()) {
-            qDebug() << "";
-            qDebug() << "═══════════════════════════════════════════════════════";
-            qDebug() << "[Mock] Reverse gear engaged - starting PDC distance simulation";
-            qDebug() << "[Mock] Distance will decrease from" << START_DISTANCE << "cm to" << END_DISTANCE << "cm";
-            qDebug() << "═══════════════════════════════════════════════════════";
-            qDebug() << "";
-            m_currentDistance = START_DISTANCE;
-            // Start timer in the main thread (Qt event loop thread)
-            QMetaObject::invokeMethod(m_updateTimer, "start", Qt::QueuedConnection,
-                                      Q_ARG(int, 500));  // UPDATE_INTERVAL = 500ms
-        }
-    } else if (oldGear == "R") {
-        qDebug() << "[Mock] Reverse gear disengaged - stopping PDC simulation";
-        QMetaObject::invokeMethod(m_updateTimer, "stop", Qt::QueuedConnection);
+    // Start/stop simulation based on gear
+    if (gear == "R" && !m_updateTimer->isActive()) {
+        qDebug() << "[Mock] 🚗 Reverse gear engaged - starting PDC simulation";
+        m_currentDistance = START_DISTANCE;
+        m_currentBattery = 100;
+        m_updateTimer->start(UPDATE_INTERVAL);
+    } else if (oldGear == "R" && gear != "R") {
+        qDebug() << "[Mock] 🛑 Reverse gear disengaged - stopping PDC simulation";
+        m_updateTimer->stop();
         m_currentDistance = START_DISTANCE;
     }
 
@@ -77,89 +69,124 @@ void MockStubImpl::startSimulation()
 {
     qDebug() << "";
     qDebug() << "═══════════════════════════════════════════════════════";
-    qDebug() << "[Mock] Starting PDC simulation...";
+    qDebug() << "[Mock] 🚀 Starting Continuous Simulation";
     qDebug() << "═══════════════════════════════════════════════════════";
     qDebug() << "";
-
-    // Reset state
-    m_currentDistance = START_DISTANCE;
-
-    // Set gear to Reverse
-    QString oldGear = m_currentGear;
-    m_currentGear = "R";
-
-    qDebug() << "[Mock] Setting gear to REVERSE (R)";
-    qDebug() << "[Mock] Initial distance:" << m_currentDistance << "cm";
-    qDebug() << "[Mock] Target distance:" << m_targetDistance << "cm";
-    qDebug() << "[Mock] Distance step:" << m_distanceStep << "cm every" << UPDATE_INTERVAL << "ms";
+    qDebug() << "[Mock] Configuration:";
+    qDebug() << "       • Gear: R (Reverse)";
+    qDebug() << "       • Speed: 0 km/h";
+    qDebug() << "       • Battery: 100% → 10%";
+    qDebug() << "       • Distance: 60cm → 5cm";
+    qDebug() << "       • Update interval: 500ms";
     qDebug() << "";
+
+    // Initialize state
+    m_currentGear = "R";
+    m_currentSpeed = 0;
+    m_currentBattery = 100;
+    m_currentDistance = START_DISTANCE;
 
     // Broadcast initial state
     uint64_t timestamp = QDateTime::currentMSecsSinceEpoch();
+    
     fireGearDistanceChangedEvent(m_currentGear.toStdString(),
-                                  oldGear.toStdString(),
-                                  static_cast<uint16_t>(m_currentDistance),
+                                  "P",  // old gear
+                                  m_currentDistance,
                                   timestamp);
 
-    // Also broadcast vehicle state
     fireVehicleStateChangedEvent(m_currentGear.toStdString(),
-                                  0,    // speed = 0
-                                  80,   // battery = 80%
+                                  m_currentSpeed,
+                                  m_currentBattery,
                                   timestamp);
 
-    // Start timer
+    qDebug() << "[Mock] 📡 Initial broadcast sent";
+    qDebug() << "       Gear: R | Speed: 0 | Battery: 100% | Distance: 60cm";
+    qDebug() << "";
+    qDebug() << "═══════════════════════════════════════════════════════";
+    qDebug() << "";
+
+    // Start periodic updates
     m_updateTimer->start(UPDATE_INTERVAL);
 }
 
 void MockStubImpl::stopSimulation()
 {
-    m_updateTimer->stop();
-    qDebug() << "[Mock] Simulation stopped";
+    if (m_updateTimer->isActive()) {
+        m_updateTimer->stop();
+        qDebug() << "[Mock] 🛑 Simulation stopped";
+    }
 }
 
-void MockStubImpl::updateDistance()
+void MockStubImpl::updateSimulation()
 {
     // Decrease distance
-    m_currentDistance -= m_distanceStep;
+    m_currentDistance -= DISTANCE_STEP;
 
-    // Check if we reached target
-    if (m_currentDistance <= m_targetDistance) {
-        m_currentDistance = m_targetDistance;
+    // Calculate battery level (decreases as distance decreases)
+    // 100% at 60cm → 10% at 5cm
+    int batteryRange = 90;  // 100% - 10%
+    int distanceRange = START_DISTANCE - END_DISTANCE;  // 60 - 5 = 55cm
+    m_currentBattery = 100 - ((START_DISTANCE - m_currentDistance) * batteryRange / distanceRange);
+    
+    // Clamp battery to valid range
+    if (m_currentBattery > 100) m_currentBattery = 100;
+    if (m_currentBattery < 10) m_currentBattery = 10;
+
+    // Check if simulation complete
+    if (m_currentDistance <= END_DISTANCE) {
+        m_currentDistance = END_DISTANCE;
+        m_currentBattery = 10;
         m_updateTimer->stop();
 
         qDebug() << "";
         qDebug() << "═══════════════════════════════════════════════════════";
-        qDebug() << "[Mock] Simulation complete! Final distance:" << m_currentDistance << "cm";
-        qDebug() << "[Mock] Restarting simulation in 3 seconds...";
+        qDebug() << "[Mock] ✅ Simulation cycle complete!";
+        qDebug() << "       Final: Distance = 5cm, Battery = 10%";
+        qDebug() << "       🔄 Restarting in 3 seconds...";
         qDebug() << "═══════════════════════════════════════════════════════";
         qDebug() << "";
 
-        // Restart simulation after 3 seconds
+        // Restart after delay
         QTimer::singleShot(3000, this, [this]() {
+            qDebug() << "[Mock] 🔄 Restarting simulation cycle";
             m_currentDistance = START_DISTANCE;
+            m_currentBattery = 100;
             m_updateTimer->start(UPDATE_INTERVAL);
-            qDebug() << "[Mock] Simulation restarted from" << m_currentDistance << "cm";
         });
+        return;
     }
 
-    // Determine zone for logging
+    // Determine distance zone
     QString zone;
     if (m_currentDistance > 50) {
-        zone = "SAFE (>50cm)";
+        zone = "🟢 SAFE";
     } else if (m_currentDistance > 30) {
-        zone = "GREEN (30-50cm)";
+        zone = "🟡 CAUTION";
     } else if (m_currentDistance > 15) {
-        zone = "YELLOW (15-30cm)";
+        zone = "🟠 WARNING";
     } else {
-        zone = "RED (<15cm)";
+        zone = "🔴 DANGER";
     }
 
-    qDebug() << "[Mock] Distance:" << m_currentDistance << "cm - Zone:" << zone;
-
-    // Broadcast gearDistanceChanged event
+    // Get timestamp
     uint64_t timestamp = QDateTime::currentMSecsSinceEpoch();
+
+    // Broadcast events
     fireGearDistanceChangedEvent(m_currentGear.toStdString(),
-                                  m_currentGear.toStdString(),  // same gear
-                                  static_cast<uint16_t>(m_currentDistance),
+                                  m_currentGear.toStdString(),
+                                  m_currentDistance,
                                   timestamp);
+
+    fireVehicleStateChangedEvent(m_currentGear.toStdString(),
+                                  m_currentSpeed,
+                                  m_currentBattery,
+                                  timestamp);
+
+    // Log update
+    qDebug() << QString("[Mock] 📡 Distance: %1cm %2 | Battery: %3% | Gear: %4 | Speed: %5")
+                .arg(m_currentDistance, 2)
+                .arg(zone)
+                .arg(m_currentBattery, 3)
+                .arg(m_currentGear)
+                .arg(m_currentSpeed);
 }
