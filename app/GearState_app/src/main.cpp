@@ -43,8 +43,8 @@ int main(int argc, char *argv[])
     // Register C++ objects to QML context
     // ═══════════════════════════════════════════════════════
     // VehicleControlClient (vsomeip - Gear State)
-    VehicleControlClient vehicleClient;
-    engine.rootContext()->setContextProperty("vehicleClient", &vehicleClient);
+    VehicleControlClient *vehicleClient = new VehicleControlClient();
+    engine.rootContext()->setContextProperty("vehicleClient", vehicleClient);
 
     const QUrl url(QStringLiteral("qrc:/DesignContent/App.qml"));
     engine.load(url);

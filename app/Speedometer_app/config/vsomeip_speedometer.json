@@ -9,8 +9,8 @@
     },
     "applications": [
         {
-            "name": "BatteryMeter",
-            "id": "0x1002"
+            "name": "Speedometer",
+            "id": "0x1003"
         }
     ],
     "routing": "VehicleControlMock",

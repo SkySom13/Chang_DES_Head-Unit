@@ -9,8 +9,8 @@
     },
     "applications": [
         {
-            "name": "BatteryMeter",
-            "id": "0x1002"
+            "name": "GearState",
+            "id": "0x1004"
         }
     ],
     "routing": "VehicleControlMock",

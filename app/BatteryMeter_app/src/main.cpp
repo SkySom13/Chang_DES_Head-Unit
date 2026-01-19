@@ -39,9 +39,9 @@ int main(int argc, char *argv[])
     qDebug() << "QML Import paths:" << engine.importPathList();
     
     // Register VehicleControlClient (vSomeIP/CommonAPI mode)
-    VehicleControlClient vehicleClient;
-    engine.rootContext()->setContextProperty("vehicleClient", &vehicleClient);
-    
+    VehicleControlClient *vehicleClient = new VehicleControlClient();
+    engine.rootContext()->setContextProperty("vehicleClient", vehicleClient);
+
     qDebug() << "✅ VehicleControlClient registered (vSomeIP/CommonAPI mode)";
     
     // Load QML from resources

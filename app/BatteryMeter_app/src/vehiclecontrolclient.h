@@ -32,6 +32,7 @@ public slots:
     // Connection management
     void connectToService();
     void disconnectFromService();
+    void startSimulation();
 
 signals:
     void batteryLevelChanged(int level);

@@ -27,8 +27,11 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
 
-# Qt packages
+# Qt packages - use Qt5 from custom installation
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{HOME}/Qt/5.15.2/gcc_64")
 find_package(Qt5 REQUIRED COMPONENTS Core Network Quick Qml)
+message(STATUS "Using Qt5 from: $ENV{HOME}/Qt/5.15.2/gcc_64")
+set(QT_VERSION 5)
 
 # CommonAPI & vsomeip
 find_package(CommonAPI 3.2 REQUIRED)

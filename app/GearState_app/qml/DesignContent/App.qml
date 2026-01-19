@@ -1,63 +1,70 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
-import QtQuick.Controls 2.15
 import Design 1.0
 
 Window {
+    id: mainWindow
+    width: 280
+    height: 400
     visible: true
-    // IVI Shell Surface ID: 0xBEEF0003 (Gear State)
-    property var iviSurfaceId: 0xBEEF0003
-    
-    // Fullscreen Weston Display (1024x600)
-    x: 0
-    y: 0
-    width: 1024
-    height: 600
     title: "Gear State"
-    flags: Qt.FramelessWindowHint
     color: Constants.backgroundColor
-    opacity: 1.0
 
-    Rectangle {
+    // Main gear state container
+    Item {
+        id: gearSection
         anchors.fill: parent
-        color: Constants.backgroundColor
+        
+        // Bind to vehicleClient gearState
+        property string currentGear: vehicleClient.gearState
+        
+        // Gear gauge container (centered)
+        Item {
+            id: gaugeContainer
+            width: 280
+            height: 280
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: -10
+            
+            // Background gauge decoration (outer ring)
+            Image {
+                id: gaugeSpeedometer_Ticks_outer
+                anchors.fill: parent
+                source: "qrc:/images/GaugeSpeedometer_Ticks2.png"
+                fillMode: Image.PreserveAspectFit
+            }
 
-        Column {
-            anchors.centerIn: parent
-            spacing: 20
-
+            // Background gauge decoration (inner ring)
+            Image {
+                id: gaugeSpeedometer_Ticks_inner
+                anchors.centerIn: parent
+                source: "qrc:/images/GaugeSpeedometer_Ticks1.png"
+                fillMode: Image.PreserveAspectFit
+            }
+            
+            // Gear letter display (centered in gauge)
             Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "GEAR STATE"
-                font.pixelSize: Constants.largeFontSize
+                id: gearText
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: 5
+                width: 150
+                height: 150
+                color: "#ffffff"
+                text: gearSection.currentGear
+                font.pixelSize: 100
                 font.bold: true
-                color: Constants.accentColor
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
-
-            Rectangle {
-                width: 200
-                height: 200
-                anchors.horizontalCenter: parent.horizontalCenter
-                color: Constants.primaryColor
-                border.color: Constants.accentColor
-                border.width: 2
-                radius: 10
-
-                Text {
-                    anchors.centerIn: parent
-                    text: "P"
-                    font.pixelSize: 80
-                    font.bold: true
-                    color: Constants.accentColor
-                }
-            }
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Status: Connected"
-                font.pixelSize: Constants.fontSize
-                color: Constants.textColor
-            }
+        }
+    }
+    
+    // Connections to vehicleClient
+    Connections {
+        target: vehicleClient
+        function onGearStateChanged() {
+            console.log("📡 Gear changed:", vehicleClient.gearState)
         }
     }
 }

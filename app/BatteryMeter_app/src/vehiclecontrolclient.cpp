@@ -107,16 +107,44 @@ void VehicleControlClient::onAvailabilityChanged(CommonAPI::AvailabilityStatus s
 {
     bool wasAvailable = m_serviceAvailable;
     m_serviceAvailable = (status == CommonAPI::AvailabilityStatus::AVAILABLE);
-    
+
     if (m_serviceAvailable != wasAvailable) {
         qDebug() << "🔗 Service availability changed:"
-                 << (m_serviceAvailable ? "AVAILABLE" : "NOT AVAILABLE");
+                  << (m_serviceAvailable ? "AVAILABLE" : "NOT AVAILABLE");
         emit serviceAvailableChanged(m_serviceAvailable);
     }
-    
+
     if (m_serviceAvailable) {
         qDebug() << "✅ VehicleControl service is now available!";
+        // Start simulation when service becomes available
+        startSimulation();
     } else {
         qWarning() << "⚠️  VehicleControl service is not available";
+    }
+}
+
+void VehicleControlClient::startSimulation()
+{
+    qDebug() << "🚀 startSimulation() called";
+
+    if (!m_proxy || !m_serviceAvailable) {
+        qWarning() << "Cannot start simulation: proxy not available";
+        return;
+    }
+
+    qDebug() << "🚗 Starting VehicleControl simulation by setting gear to REVERSE";
+
+    // Call the setGearPosition RPC to start the simulation
+    qDebug() << "🔧 Calling setGearPosition with gear='R'";
+    CommonAPI::CallStatus callStatus;
+    bool success;
+    m_proxy->setGearPosition("R", callStatus, success);
+
+    qDebug() << "🔧 RPC call completed - callStatus:" << (int)callStatus << "success:" << success;
+
+    if (callStatus == CommonAPI::CallStatus::SUCCESS && success) {
+        qDebug() << "✅ Gear set to REVERSE - simulation should start";
+    } else {
+        qWarning() << "❌ Failed to set gear to REVERSE - callStatus:" << (int)callStatus << "success:" << success;
     }
 }
